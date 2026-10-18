@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schoology AI Calendar Planner</title>
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; background: #f9f9fb; color: #333; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        input[type="text"] { width: 100%; padding: 10px; margin: 10px 0 20px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { background: #4F46E5; color: white; border: none; padding: 12px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #4338CA; }
+        .event-list { margin-top: 15px; background: #f3f4f6; padding: 15px; border-radius: 8px; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <h1>Schoology to AI Google Calendar</h1>
+    
+    <div class="card">
+        <h2>1. Link Your Schoology Calendar</h2>
+        <p>Go to Schoology > Calendar > click the ⚙️ icon > copy the <strong>iCal Link</strong> and paste it below:</p>
+        <input type="text" id="icalUrl" placeholder="https://schoology.com...">
+        <button onclick="fetchCalendar()">Fetch & Parse Calendar</button>
+        <div id="status" class="event-list" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+        <h2>2. AI Optimization Settings</h2>
+        <p>The system will automatically analyze your assignment deadlines and block out optimal study/preparation slots leading up to the due dates instead of just putting a single deadline entry.</p>
+        <button onclick="optimizeWithAI()">Run AI Smart Scheduler</button>
+        <div id="aiStatus" class="event-list" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+        <h2>3. Sync to Google Calendar</h2>
+        <p>Authorize your Google account to instantly deploy your optimized schedule directly onto your timeline.</p>
+        <button id="authBtn" onclick="handleAuth()">Authorize & Export to Google Calendar</button>
+    </div>
+
+    <script>
+        let rawEvents = [];
+        let optimizedEvents = [];
+
+        // 1. Fetch & Parse iCal from Schoology
+        async function fetchCalendar() {
+            const url = document.getElementById('icalUrl').value;
+            const statusDiv = document.getElementById('status');
+            if(!url) return alert('Please enter a valid iCal URL');
+            
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = 'Fetching and parsing deadlines...';
+
+            try {
+                // Using a CORS proxy to allow client-side fetching of the feed
+                const response = await fetch(`https://allorigins.win{encodeURIComponent(url)}`);
+                const text = await response.text();
+                
+                const jcalData = ICAL.parse(text);
+                const comp = new ICAL.Component(jcalData);
+                const vevents = comp.getAllSubcomponents('vevent');
+                
+                rawEvents = vevents.map(vevent => {
+                    const event = new ICAL.Event(vevent);
+                    return {
+                        summary: event.summary,
+                        dueDate: event.startDate.toJSDate(),
+                        description: event.description || ''
+                    };
+                });
+
+                statusDiv.innerHTML = `<strong>Found ${rawEvents.length} upcoming deadlines:</strong><br>` + 
+                    rawEvents.map(e => `- ${e.summary} (Due: ${e.dueDate.toLocaleDateString()})`).join('<br>');
+            } catch (err) {
+                statusDiv.innerHTML = 'Error loading calendar. Ensure the link is correct and public.';
+                console.error(err);
+            }
+        }
+
+        // 2. AI Scheduling Algorithm Simulation
+        function optimizeWithAI() {
+            const aiDiv = document.getElementById('aiStatus');
+            if(rawEvents.length === 0) return alert('Please fetch your Schoology calendar first!');
+            
+            aiDiv.style.display = 'block';
+            aiDiv.innerHTML = 'AI Client Model is breaking down workloads...';
+            
+            optimizedEvents = [];
+            
+            rawEvents.forEach(assignment => {
+                // Heuristic Model: Breaks big assignments into a 2-day warning structure
+                // Day -2: Prep block (1.5 hours)
+                // Day -1: Revision block (1 hour)
+                // Day 0: Deadline tracking event
+                
+                const dayMs = 24 * 60 * 60 * 1000;
+                
+                // Block 1: Deep Work block 2 days before
+                let prepDate = new Date(assignment.dueDate.getTime() - (2 * dayMs));
+                prepDate.setHours(16, 0, 0); // 4:00 PM
+                optimizedEvents.push({
+                    summary: `[AI Prep] Focus: ${assignment.summary}`,
+                    start: prepDate,
+                    end: new Date(prepDate.getTime() + (90 * 60 * 1000)) // 90 mins
+                });
+
+                // Block 2: Review block 1 day before
+                let reviewDate = new Date(assignment.dueDate.getTime() - (1 * dayMs));
+                reviewDate.setHours(17, 0, 0); // 5:00 PM
+                optimizedEvents.push({
+                    summary: `[AI Review] Finalize: ${assignment.summary}`,
+                    start: reviewDate,
+                    end: new Date(reviewDate.getTime() + (60 * 60 * 1000)) // 60 mins
+                });
+
+                // Actual Deadline
+                optimizedEvents.push({
+                    summary: `🚨 DEADLINE: ${assignment.summary}`,
+                    start: assignment.dueDate,
+                    end: new Date(assignment.dueDate.getTime() + (30 * 60 * 1000))
+                });
+            });
+
+            aiDiv.innerHTML = `<strong>AI generated ${optimizedEvents.length} calendar events to protect your time:</strong><br>` +
+                optimizedEvents.map(e => `- ${e.summary} (${e.start.toLocaleString()})`).join('<br>');
+        }
+
+        // 3. Simple Integration Blueprint Placeholder
+        function handleAuth() {
+            alert('To link live production data to your private Google Calendar, you need to input your custom Google Cloud OAuth Client ID inside your GitHub repository settings. Check the documentation step below!');
+        }
+    </script>
+</body>
+</html>
